@@ -1,6 +1,6 @@
-# Limine Rust Template
+# Lapnier Kernel
 
-This repository will demonstrate how to set up a basic kernel in Rust using Limine.
+This repository is a kernel in Rust using Limine.
 
 ## How to use this?
 
