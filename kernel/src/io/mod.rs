@@ -104,10 +104,24 @@ pub unsafe fn kprint(
         foreground,
         background,
     };
-    let x_offset = if scale == 0 { 1 } else { scale + 1 };
-    for (col, c) in string.iter().enumerate() {
-        properties.x = x_offset * col * 6;
-        kprint_char(*c, &properties)?;
+    let scale_offset = if scale == 0 { 1 } else { scale + 1 };
+    let mut col = 0;
+    let mut row = 0;
+    for c in string {
+        match c {
+            b'\r' => {
+                col = 0;
+            }
+            b'\n' => {
+                row += 1;
+                properties.y = scale_offset * row * 8;
+            }
+            _ => {
+                properties.x = scale_offset * col * 6;
+                kprint_char(*c, &properties)?;
+                col += 1;
+            }
+        }
     }
     Ok(())
 }

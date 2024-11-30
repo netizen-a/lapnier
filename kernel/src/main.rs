@@ -51,7 +51,7 @@ unsafe extern "C" fn kmain() -> ! {
     // removed by the linker.
     assert!(BASE_REVISION.is_supported());
 
-    io::kprint(b"Hello, World!", 4, 0xffffffff, 0x0000ff00).unwrap();
+    io::kprint(b"first\r\nsecond", 1, 0xffffffff, 0x00000000).unwrap();
 
     hcf();
 }
