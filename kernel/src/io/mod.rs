@@ -17,6 +17,7 @@
 use crate::fonts::font_6x8::FONT_6X8;
 use crate::FRAMEBUFFER_REQUEST;
 
+#[derive(Debug)]
 pub enum Error {
     NoResponse,
     NoBuffers,
@@ -30,14 +31,32 @@ pub struct CharacterProperties {
     pub background: u32,
 }
 
-pub unsafe fn kprint_char(character: u8, properties: &CharacterProperties) -> Result<(), Error> {
-    let font = FONT_6X8;
+unsafe fn kprint_generic(value: bool, properties: &CharacterProperties) -> Result<(), Error> {
     let Some(framebuffer_response) = FRAMEBUFFER_REQUEST.get_response() else {
         return Err(Error::NoResponse);
     };
     let Some(framebuffer) = framebuffer_response.framebuffers().next() else {
         return Err(Error::NoBuffers);
     };
+    for y_thick in 0..(properties.scale + 1) {
+        for x_thick in 0..(properties.scale + 1) {
+            let row_offset = (properties.y + y_thick) * framebuffer.pitch() as usize;
+            let col_offset = (properties.x + x_thick) * 4;
+            let pixel_offset = row_offset + col_offset;
+
+            let color = if value {
+                properties.foreground
+            } else {
+                properties.background
+            };
+            *(framebuffer.addr().add(pixel_offset as usize) as *mut u32) = color;
+        }
+    }
+    Ok(())
+}
+
+pub unsafe fn kprint_char(character: u8, properties: &CharacterProperties) -> Result<(), Error> {
+    let font = FONT_6X8;
     let bitmap_index: usize = match character {
         0x20..0x7F => character as usize - 0x20,
         _ => 0,
@@ -52,20 +71,15 @@ pub unsafe fn kprint_char(character: u8, properties: &CharacterProperties) -> Re
     for row in 0..8 {
         let data = font[bitmap_index][row];
         for col in 2..8 {
-            for y_thick in 0..(scale + 1) {
-                for x_thick in 0..(scale + 1) {
-                    let row_offset = (x + y_thick + y_offset + row) * framebuffer.pitch() as usize;
-                    let col_offset = (y + x_thick + x_offset + col) * 4;
-                    let pixel_offset = row_offset + col_offset;
-
-                    let color = if data & (1 << (7 - col)) != 0 {
-                        properties.foreground
-                    } else {
-                        properties.background
-                    };
-                    *(framebuffer.addr().add(pixel_offset as usize) as *mut u32) = color;
-                }
-            }
+            let color = data & (1 << (7 - col)) != 0;
+            let local_prop = CharacterProperties {
+                x: x_offset + col + x,
+                y: y_offset + row + y,
+                scale,
+                foreground: properties.foreground,
+                background: properties.background,
+            };
+            kprint_generic(color, &local_prop);
             x_offset += scale;
         }
         y_offset += scale;
@@ -87,9 +101,9 @@ pub unsafe fn kprint(
         foreground,
         background,
     };
-    let y_offset = if scale == 0 { 1 } else { scale + 1 };
+    let x_offset = if scale == 0 { 1 } else { scale + 1 };
     for (col, c) in string.iter().enumerate() {
-        properties.y = y_offset * col * 6;
+        properties.x = x_offset * col * 6;
         kprint_char(*c, &properties)?;
     }
     Ok(())

@@ -51,13 +51,17 @@ unsafe extern "C" fn kmain() -> ! {
     // removed by the linker.
     assert!(BASE_REVISION.is_supported());
 
-    io::kprint(b"Hello, World!", 0, 0xffffffff, 0x00000000);
+    io::kprint(b"Hello, World!", 4, 0xffffffff, 0x0000ff00).unwrap();
 
     hcf();
 }
 
 #[panic_handler]
 fn rust_panic(_info: &core::panic::PanicInfo) -> ! {
+    unsafe {
+        let msg = _info.message().as_str().unwrap_unchecked();
+        let _ = io::kprint(msg.as_bytes(), 4, 0x00ff0000, 0x00000000);
+    }
     hcf();
 }
 
