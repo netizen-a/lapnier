@@ -31,7 +31,10 @@ pub struct CharacterProperties {
     pub background: u32,
 }
 
-unsafe fn kprint_generic(value: bool, properties: &CharacterProperties) -> Result<(), Error> {
+unsafe fn kprint_generic(
+    is_foreground: bool,
+    properties: &CharacterProperties,
+) -> Result<(), Error> {
     let Some(framebuffer_response) = FRAMEBUFFER_REQUEST.get_response() else {
         return Err(Error::NoResponse);
     };
@@ -44,12 +47,12 @@ unsafe fn kprint_generic(value: bool, properties: &CharacterProperties) -> Resul
             let col_offset = (properties.x + x_thick) * 4;
             let pixel_offset = row_offset + col_offset;
 
-            let color = if value {
+            let color = if is_foreground {
                 properties.foreground
             } else {
                 properties.background
             };
-            *(framebuffer.addr().add(pixel_offset as usize) as *mut u32) = color;
+            *(framebuffer.addr().add(pixel_offset) as *mut u32) = color;
         }
     }
     Ok(())
@@ -71,7 +74,7 @@ pub unsafe fn kprint_char(character: u8, properties: &CharacterProperties) -> Re
     for row in 0..8 {
         let data = font[bitmap_index][row];
         for col in 2..8 {
-            let color = data & (1 << (7 - col)) != 0;
+            let is_foreground = data & (1 << (7 - col)) != 0;
             let local_prop = CharacterProperties {
                 x: x_offset + col + x,
                 y: y_offset + row + y,
@@ -79,7 +82,7 @@ pub unsafe fn kprint_char(character: u8, properties: &CharacterProperties) -> Re
                 foreground: properties.foreground,
                 background: properties.background,
             };
-            kprint_generic(color, &local_prop);
+            kprint_generic(is_foreground, &local_prop)?;
             x_offset += scale;
         }
         y_offset += scale;
