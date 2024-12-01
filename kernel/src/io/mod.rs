@@ -1,3 +1,5 @@
+use limine::framebuffer::Framebuffer;
+
 /*
  * Copyright (C) 2024  Jonathan Thomason
  *
@@ -16,6 +18,11 @@
  */
 use crate::fonts::font_6x8::FONT_6X8;
 use crate::FRAMEBUFFER_REQUEST;
+use core::sync::atomic::*;
+
+// cursor encodes row * pitch + col
+static CURSOR: AtomicU64 = AtomicU64::new(0);
+const SCALER: u64 = 1;
 
 #[derive(Debug)]
 pub enum Error {
@@ -24,41 +31,63 @@ pub enum Error {
 }
 
 pub struct CharacterProperties {
-    pub x: usize,
-    pub y: usize,
-    pub scale: usize,
+    pub x: u64,
+    pub y: u64,
+    pub scale: u64,
     pub foreground: u32,
     pub background: u32,
 }
 
-unsafe fn kprint_generic(
-    is_foreground: bool,
-    properties: &CharacterProperties,
-) -> Result<(), Error> {
+pub unsafe fn kprint(string: &[u8], foreground: u32, background: u32) -> Result<(), Error> {
     let Some(framebuffer_response) = FRAMEBUFFER_REQUEST.get_response() else {
         return Err(Error::NoResponse);
     };
     let Some(framebuffer) = framebuffer_response.framebuffers().next() else {
         return Err(Error::NoBuffers);
     };
-    for y_thick in 0..(properties.scale + 1) {
-        for x_thick in 0..(properties.scale + 1) {
-            let row_offset = (properties.y + y_thick) * framebuffer.pitch() as usize;
-            let col_offset = (properties.x + x_thick) * 4;
-            let pixel_offset = row_offset + col_offset;
+    let mut properties = CharacterProperties {
+        x: 0,
+        y: 0,
+        scale: SCALER,
+        foreground,
+        background,
+    };
+    let scale_offset = if SCALER == 0 { 1 } else { SCALER + 1 };
 
-            let color = if is_foreground {
-                properties.foreground
-            } else {
-                properties.background
-            };
-            *(framebuffer.addr().add(pixel_offset) as *mut u32) = color;
+    let mut cursor = CURSOR.load(Ordering::Relaxed);
+    let mut col = cursor % framebuffer.pitch();
+    let mut row = cursor / framebuffer.pitch();
+    for c in string {
+        match c {
+            // Carriage Return
+            b'\r' => col = 0,
+            // Line Feed
+            b'\n' => {
+                row += 1;
+            }
+            // Tab
+            b'\t' => col += 8,
+            // printable characters
+            0x20..=0x7F => {
+                properties.y = scale_offset * row * 8;
+                properties.x = scale_offset * col * 6;
+                kprint_char(*c, &properties, &framebuffer)?;
+                col += 1;
+            }
+            // unused control characters
+            _ => {}
         }
     }
+    cursor = row * framebuffer.pitch() + col;
+    CURSOR.store(cursor, Ordering::Relaxed);
     Ok(())
 }
 
-pub unsafe fn kprint_char(character: u8, properties: &CharacterProperties) -> Result<(), Error> {
+unsafe fn kprint_char(
+    character: u8,
+    properties: &CharacterProperties,
+    framebuffer: &Framebuffer,
+) -> Result<(), Error> {
     let font = FONT_6X8;
     let bitmap_index: usize = match character {
         0x20..0x7F => character as usize - 0x20,
@@ -72,7 +101,7 @@ pub unsafe fn kprint_char(character: u8, properties: &CharacterProperties) -> Re
     let mut y_offset = 0;
     let mut x_offset = 0;
     for row in 0..8 {
-        let data = font[bitmap_index][row];
+        let data = font[bitmap_index][row as usize];
         for col in 2..8 {
             let is_foreground = data & (1 << (7 - col)) != 0;
             let local_prop = CharacterProperties {
@@ -82,7 +111,7 @@ pub unsafe fn kprint_char(character: u8, properties: &CharacterProperties) -> Re
                 foreground: properties.foreground,
                 background: properties.background,
             };
-            kprint_generic(is_foreground, &local_prop)?;
+            kprint_generic(is_foreground, &local_prop, framebuffer)?;
             x_offset += scale;
         }
         y_offset += scale;
@@ -91,36 +120,23 @@ pub unsafe fn kprint_char(character: u8, properties: &CharacterProperties) -> Re
     Ok(())
 }
 
-pub unsafe fn kprint(
-    string: &[u8],
-    scale: usize,
-    foreground: u32,
-    background: u32,
+unsafe fn kprint_generic(
+    is_foreground: bool,
+    properties: &CharacterProperties,
+    framebuffer: &Framebuffer,
 ) -> Result<(), Error> {
-    let mut properties = CharacterProperties {
-        x: 0,
-        y: 0,
-        scale,
-        foreground,
-        background,
-    };
-    let scale_offset = if scale == 0 { 1 } else { scale + 1 };
-    let mut col = 0;
-    let mut row = 0;
-    for c in string {
-        match c {
-            b'\r' => {
-                col = 0;
-            }
-            b'\n' => {
-                row += 1;
-                properties.y = scale_offset * row * 8;
-            }
-            _ => {
-                properties.x = scale_offset * col * 6;
-                kprint_char(*c, &properties)?;
-                col += 1;
-            }
+    for y_thick in 0..(properties.scale + 1) {
+        for x_thick in 0..(properties.scale + 1) {
+            let row_offset = (properties.y + y_thick) * framebuffer.pitch();
+            let col_offset = (properties.x + x_thick) * 4;
+            let pixel_offset = row_offset + col_offset;
+
+            let color = if is_foreground {
+                properties.foreground
+            } else {
+                properties.background
+            };
+            *(framebuffer.addr().add(pixel_offset as usize) as *mut u32) = color;
         }
     }
     Ok(())
