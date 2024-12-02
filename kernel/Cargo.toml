@@ -1,5 +1,5 @@
 [package]
-name = "limine-rust-template"
+name = "lapnier"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,7 @@ edition = "2021"
 limine = "0.3.1"
 
 [profile.dev]
-panic = "abort"
+panic = "unwind"
 
 [profile.release]
 panic = "abort"

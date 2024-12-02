@@ -19,6 +19,7 @@
 
 mod fonts;
 mod io;
+mod panic;
 
 use core::arch::asm;
 
@@ -57,12 +58,7 @@ unsafe extern "C" fn kmain() -> ! {
     hcf();
 }
 
-#[panic_handler]
-fn rust_panic(_info: &core::panic::PanicInfo) -> ! {
-    hcf();
-}
-
-fn hcf() -> ! {
+pub fn hcf() -> ! {
     loop {
         unsafe {
             #[cfg(target_arch = "x86_64")]
