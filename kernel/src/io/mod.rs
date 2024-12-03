@@ -38,7 +38,10 @@ pub struct CharacterProperties {
     pub background: u32,
 }
 
-pub unsafe fn kprint(string: &[u8], foreground: u32, background: u32) -> Result<(), Error> {
+pub unsafe fn kprint<S>(ascii: S, foreground: u32, background: u32) -> Result<(), Error>
+where
+    S: AsRef<[u8]>,
+{
     let Some(framebuffer_response) = FRAMEBUFFER_REQUEST.get_response() else {
         return Err(Error::NoResponse);
     };
@@ -57,7 +60,9 @@ pub unsafe fn kprint(string: &[u8], foreground: u32, background: u32) -> Result<
     let mut cursor = CURSOR.load(Ordering::Relaxed);
     let mut col = cursor % framebuffer.pitch();
     let mut row = cursor / framebuffer.pitch();
-    for c in string {
+    let ascii_str = ascii.as_ref();
+    let mut ascii_iter = ascii_str.iter();
+    while let Some(c) = ascii_iter.next() {
         match c {
             // Carriage Return
             b'\r' => col = 0,

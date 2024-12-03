@@ -22,6 +22,7 @@ mod io;
 mod panic;
 
 use core::arch::asm;
+use core::fmt::Write;
 
 use limine::request::{FramebufferRequest, RequestsEndMarker, RequestsStartMarker};
 use limine::BaseRevision;
@@ -51,9 +52,6 @@ unsafe extern "C" fn kmain() -> ! {
     // All limine requests must also be referenced in a called function, otherwise they may be
     // removed by the linker.
     assert!(BASE_REVISION.is_supported());
-
-    let _ = io::kprint(b"first\n", 0xffffffff, 0x00000000);
-    let _ = io::kprint(b"second", 0xffffffff, 0x00000000);
 
     hcf();
 }
