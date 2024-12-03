@@ -21,6 +21,7 @@ mod fonts;
 mod io;
 mod panic;
 
+use arrayvec::ArrayString;
 use core::arch::asm;
 use core::fmt::Write;
 
@@ -52,6 +53,18 @@ unsafe extern "C" fn kmain() -> ! {
     // All limine requests must also be referenced in a called function, otherwise they may be
     // removed by the linker.
     assert!(BASE_REVISION.is_supported());
+
+    let resp = FRAMEBUFFER_REQUEST.get_response().unwrap();
+    let fb = resp.framebuffers().next().unwrap();
+    let mut buf = ArrayString::<500>::new();
+
+    write!(buf, "addr: {:p}\r\n", fb.addr()).unwrap();
+    write!(buf, "bpp: {}\r\n", fb.bpp()).unwrap();
+    write!(buf, "height: {}\r\n", fb.height()).unwrap();
+    write!(buf, "width: {}\r\n", fb.width()).unwrap();
+    write!(buf, "pitch: {}\r\n", fb.pitch()).unwrap();
+
+    let _ = io::kprint(buf.as_bytes(), 0x0000ff00, 0);
 
     hcf();
 }

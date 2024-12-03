@@ -38,6 +38,26 @@ pub struct CharacterProperties {
     pub background: u32,
 }
 
+pub unsafe fn cls() -> Result<(), Error> {
+    CURSOR.store(0, Ordering::Relaxed);
+    let Some(framebuffer_response) = FRAMEBUFFER_REQUEST.get_response() else {
+        return Err(Error::NoResponse);
+    };
+    let Some(framebuffer) = framebuffer_response.framebuffers().next() else {
+        return Err(Error::NoBuffers);
+    };
+    let height = framebuffer.height() / 8;
+    let pitch = framebuffer.pitch();
+
+    let limit = pitch * height;
+    for next in 0..limit {
+        let addr = framebuffer.addr() as *mut u64;
+        addr.add(next as usize).write(0);
+    }
+    CURSOR.store(0, Ordering::Relaxed);
+    Ok(())
+}
+
 pub unsafe fn kprint<S>(ascii: S, foreground: u32, background: u32) -> Result<(), Error>
 where
     S: AsRef<[u8]>,
