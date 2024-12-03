@@ -38,7 +38,8 @@ pub struct CharacterProperties {
     pub background: u32,
 }
 
-pub unsafe fn cls() -> Result<(), Error> {
+// fill screen with specified color, then reset cursor
+pub unsafe fn cls(color: u32) -> Result<(), Error> {
     CURSOR.store(0, Ordering::Relaxed);
     let Some(framebuffer_response) = FRAMEBUFFER_REQUEST.get_response() else {
         return Err(Error::NoResponse);
@@ -46,13 +47,13 @@ pub unsafe fn cls() -> Result<(), Error> {
     let Some(framebuffer) = framebuffer_response.framebuffers().next() else {
         return Err(Error::NoBuffers);
     };
-    let height = framebuffer.height() / 8;
+    let height = framebuffer.height() / 4;
     let pitch = framebuffer.pitch();
 
     let limit = pitch * height;
     for next in 0..limit {
-        let addr = framebuffer.addr() as *mut u64;
-        addr.add(next as usize).write(0);
+        let addr = framebuffer.addr() as *mut u32;
+        addr.add(next as usize).write(color);
     }
     CURSOR.store(0, Ordering::Relaxed);
     Ok(())
