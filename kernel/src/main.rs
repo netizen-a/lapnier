@@ -20,10 +20,9 @@
 mod fonts;
 mod io;
 mod panic;
+mod gdt;
 
-use arrayvec::ArrayString;
 use core::arch::asm;
-use core::fmt::Write;
 
 use limine::request::{FramebufferRequest, RequestsEndMarker, RequestsStartMarker};
 use limine::BaseRevision;
@@ -54,17 +53,10 @@ unsafe extern "C" fn kmain() -> ! {
     // removed by the linker.
     assert!(BASE_REVISION.is_supported());
 
-    let resp = FRAMEBUFFER_REQUEST.get_response().unwrap();
-    let fb = resp.framebuffers().next().unwrap();
-    let mut buf = ArrayString::<500>::new();
+    gdt::set_gdt();
+    gdt::reload_segments();
 
-    write!(buf, "addr: {:p}\r\n", fb.addr()).unwrap();
-    write!(buf, "bpp: {}\r\n", fb.bpp()).unwrap();
-    write!(buf, "height: {}\r\n", fb.height()).unwrap();
-    write!(buf, "width: {}\r\n", fb.width()).unwrap();
-    write!(buf, "pitch: {}\r\n", fb.pitch()).unwrap();
-
-    let _ = io::kprint(buf.as_bytes(), 0x0000ff00, 0);
+    let _ = io::cls(0x00ff0000);
 
     hcf();
 }
