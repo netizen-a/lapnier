@@ -4,7 +4,7 @@ use arrayvec::ArrayString;
 use core::fmt::Write;
 
 #[panic_handler]
-fn rust_panic(info: &core::panic::PanicInfo) -> ! {
+fn panic(info: &core::panic::PanicInfo) -> ! {
     unsafe {
         let _ = io::cls(0);
         let _ = io::kprint(b"kernel panicked!\r\n", 0x00ff0000, 0);

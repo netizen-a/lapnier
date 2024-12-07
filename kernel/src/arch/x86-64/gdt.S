@@ -20,18 +20,14 @@
 .globl set_gdt
 
 .data
-gdt:
-    gdt_null: .quad 0
-    gdt_code: .quad 0x00af9b000000ffff
-    gdt_data: .quad 0x00af93000000ffff
-gdt_end:
-
 gdtr:
-    len:  .word gdt_end-gdt-1
-    base: .quad gdt
+    len:  .word 0
+    base: .quad 0
 
 .text
 set_gdt:
+    mov [gdtr], di
+    mov [gdtr+2], rsi
     lgdt  [gdtr]
     ret
 
@@ -43,10 +39,10 @@ reload_segments:
     retfq
 reload_CS:
     // Reload data segment registers
-    MOV   AX, 0x10
-    MOV   DS, AX
-    MOV   ES, AX
-    MOV   FS, AX
-    MOV   GS, AX
-    MOV   SS, AX
-    RET
+    mov   ax, 0x10
+    mov   ds, ax
+    mov   es, ax
+    mov   fs, ax
+    mov   gs, ax
+    mov   ss, ax
+    ret

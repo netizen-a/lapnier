@@ -21,6 +21,7 @@ mod fonts;
 mod io;
 mod panic;
 mod arch;
+mod gdt;
 
 use core::arch::asm;
 
@@ -53,8 +54,10 @@ unsafe extern "C" fn kmain() -> ! {
     // removed by the linker.
     assert!(BASE_REVISION.is_supported());
 
-    arch::x86_64::set_gdt();
+    let len = gdt::GDT.len() * core::mem::size_of_val(gdt::GDT) - 1;
+    arch::x86_64::set_gdt(len as u32, &raw const gdt::GDT[0]);
     arch::x86_64::reload_segments();
+    io::cls(0x00ff0000).unwrap();
 
     hcf();
 }

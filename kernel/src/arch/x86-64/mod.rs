@@ -15,6 +15,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 extern "sysv64" {
-    pub fn set_gdt();
+    pub fn set_gdt(len: u32, base: *const u64);
     pub fn reload_segments();
 }
