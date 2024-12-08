@@ -1,5 +1,3 @@
-use limine::framebuffer::Framebuffer;
-
 /*
  * Copyright (C) 2024  Jonathan Thomason
  *
@@ -19,6 +17,7 @@ use limine::framebuffer::Framebuffer;
 use crate::fonts::font_6x8::FONT_6X8;
 use crate::FRAMEBUFFER_REQUEST;
 use core::sync::atomic::*;
+use limine::framebuffer::Framebuffer;
 
 // cursor encodes row * pitch + col
 static CURSOR: AtomicU64 = AtomicU64::new(0);
@@ -49,7 +48,7 @@ pub unsafe fn cls(color: u32) -> Result<(), Error> {
     let height = framebuffer.height() / 8;
     let pitch = framebuffer.pitch();
 
-    let color_color: u64 = color as u64 | ((color as u64)  << 32);
+    let color_color: u64 = color as u64 | ((color as u64) << 32);
 
     let limit = pitch * height;
     for next in 0..limit {
@@ -86,15 +85,16 @@ where
     let mut ascii_iter = ascii_str.iter();
     while let Some(c) = ascii_iter.next() {
         match c {
-            // Carriage Return
+            // Carriage return
             b'\r' => col = 0,
-            // Line Feed
+            // New line
             b'\n' => {
+                col = 0;
                 row += 1;
             }
             // Tab
             b'\t' => col += 8,
-            // printable characters
+            // Printable characters
             0x20..=0x7F => {
                 properties.y = scale_offset * row * 8;
                 properties.x = scale_offset * col * 6;

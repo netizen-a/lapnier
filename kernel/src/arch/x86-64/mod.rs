@@ -14,7 +14,32 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-extern "sysv64" {
-    pub fn set_gdt(len: u32, base: *const u64);
-    pub fn reload_segments();
+use core::arch::asm;
+
+#[repr(C, packed)]
+pub struct Gdtr {
+    pub len: u16,
+    pub base: *const u64,
+}
+
+pub unsafe fn reload_segments() {
+    asm! {
+        // Reload CS register:
+        "push 0x08",
+        "lea rax, [rip+2f]",
+        "push rax",
+        "retfq",
+        // Reload data segment registers
+        "2: mov   ax, 0x10",
+        "mov   ds, ax",
+        "mov   es, ax",
+        "mov   fs, ax",
+        "mov   gs, ax",
+        "mov   ss, ax",
+    }
+}
+
+#[inline(always)]
+pub unsafe fn _load_gdt(gdtr: &Gdtr) {
+    asm!("lgdt [{}]", in(reg) gdtr, options(nostack))
 }

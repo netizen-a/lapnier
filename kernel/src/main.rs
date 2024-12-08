@@ -17,11 +17,11 @@
 #![no_std]
 #![no_main]
 
+mod arch;
 mod fonts;
+mod gdt;
 mod io;
 mod panic;
-mod arch;
-mod gdt;
 
 use core::arch::asm;
 
@@ -54,10 +54,13 @@ unsafe extern "C" fn kmain() -> ! {
     // removed by the linker.
     assert!(BASE_REVISION.is_supported());
 
-    let len = gdt::GDT.len() * core::mem::size_of_val(gdt::GDT) - 1;
-    arch::x86_64::set_gdt(len as u32, &raw const gdt::GDT[0]);
+    let gdtr = arch::x86_64::Gdtr {
+        len: (gdt::GDT.len() * core::mem::size_of_val(&gdt::GDT) - 1) as u16,
+        base: gdt::GDT.as_ptr(),
+    };
+    arch::x86_64::_load_gdt(&gdtr);
     arch::x86_64::reload_segments();
-    io::cls(0x00ff0000).unwrap();
+    io::cls(0x0000ff00).unwrap();
 
     hcf();
 }
