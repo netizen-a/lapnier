@@ -19,7 +19,7 @@
 pub struct SegmentDescriptor(u64);
 
 impl SegmentDescriptor {
-    pub const fn new(base: u32, limit: u32, access: u8, flag: u8) -> Option<SegmentDescriptor> {
+    pub const fn new(base: u32, limit: u32, access: u8, flag: u8) -> Option<Self> {
         if limit >= 2u32.pow(20) {
             return None;
         }
@@ -44,5 +44,8 @@ impl SegmentDescriptor {
         descriptor |= limit & 0x0000FFFF;
 
         Some(SegmentDescriptor(descriptor))
+    }
+    pub const fn null() -> Self {
+        Self(0)
     }
 }

@@ -19,7 +19,7 @@ use core::cell;
 
 pub static GDT: GlobalDescriptorTable<6> = GlobalDescriptorTable::new([
     // Null Descriptor
-    SegmentDescriptor::new(0, 0x00000, 0x00, 0x0).unwrap(),
+    SegmentDescriptor::null(),
     // Kernel Mode Code Segment
     SegmentDescriptor::new(0, 0xFFFFF, 0x9A, 0xA).unwrap(),
     // Kernel Mode Data Segment
@@ -29,7 +29,7 @@ pub static GDT: GlobalDescriptorTable<6> = GlobalDescriptorTable::new([
     // User Mode Data Segment
     SegmentDescriptor::new(0, 0xFFFFF, 0xF2, 0xC).unwrap(),
     // Task State Segment
-    SegmentDescriptor::new(0, 0x00000, 0x89, 0x0).unwrap(),
+    SegmentDescriptor::null(),
 ]);
 
 #[derive(Debug)]
@@ -46,7 +46,7 @@ impl<const N: usize> GlobalDescriptorTable<N> {
         }
     }
     #[inline]
-    pub const unsafe fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         N
     }
     #[inline]
