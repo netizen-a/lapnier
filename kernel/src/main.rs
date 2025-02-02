@@ -19,10 +19,11 @@
 
 mod arch;
 mod fonts;
-mod gdt;
 mod io;
 mod panic;
+mod descriptor;
 
+use descriptor::global_table as gdt;
 use core::arch::asm;
 
 use limine::request::{FramebufferRequest, RequestsEndMarker, RequestsStartMarker};
@@ -56,7 +57,7 @@ unsafe extern "C" fn kmain() -> ! {
 
     let gdtr = arch::x86_64::Gdtr {
         len: (gdt::GDT.len() * core::mem::size_of_val(&gdt::GDT) - 1) as u16,
-        base: gdt::GDT.as_ptr(),
+        base: gdt::GDT.as_ptr() as *const u64,
     };
     arch::x86_64::_load_gdt(&gdtr);
     arch::x86_64::reload_segments();

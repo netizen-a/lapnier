@@ -15,25 +15,26 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 use core::cell;
+use super::segment::SegmentDescriptor;
 
 pub static GDT: GlobalDescriptorTable<3> = GlobalDescriptorTable::new([
     // Null segment
-    add_entry(0, 0x00000, 0x00, 0x00),
+    SegmentDescriptor::new(0, 0x00000, 0x00, 0x0).unwrap(),
     // Kernel code segment
-    add_entry(0, 0xFFFFF, 0xA0, 0x9B),
+    SegmentDescriptor::new(0, 0xFFFFF, 0x9B, 0xA).unwrap(),
     // Kernel data segment
-    add_entry(0, 0xFFFFF, 0xA0, 0x93),
+    SegmentDescriptor::new(0, 0xFFFFF, 0x93, 0xA).unwrap(),
 ]);
 
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct GlobalDescriptorTable<const N: usize> {
-    inner: cell::UnsafeCell<[u64; N]>,
+    inner: cell::UnsafeCell<[SegmentDescriptor; N]>,
 }
 
 impl<const N: usize> GlobalDescriptorTable<N> {
     #[inline]
-    const fn new(value: [u64; N]) -> Self {
+    const fn new(value: [SegmentDescriptor; N]) -> Self {
         Self {
             inner: cell::UnsafeCell::new(value),
         }
@@ -43,31 +44,10 @@ impl<const N: usize> GlobalDescriptorTable<N> {
         (*self.inner.get()).len()
     }
     #[inline]
-    pub const unsafe fn as_ptr(&self) -> *const u64 {
+    pub const unsafe fn as_ptr(&self) -> *const SegmentDescriptor {
         &raw const (*self.inner.get())[0]
     }
 }
 
 // not actually Sync, so any access is marked unsafe
 unsafe impl<const N: usize> Sync for GlobalDescriptorTable<N> {}
-
-const fn add_entry(base: u32, limit: u32, access: u8, flag: u8) -> u64 {
-    let mut descriptor: u64;
-    let base: u64 = base as u64;
-    let limit = limit as u64;
-    let flag = flag as u64;
-    let access = access as u64;
-
-    descriptor = limit & 0x000F0000;
-    descriptor |= (flag << 8) & 0x0000FF00;
-    descriptor |= (access << 16) & 0x00F00000;
-    descriptor |= (base >> 16) & 0x000000FF;
-    descriptor |= base & 0xFF000000;
-
-    descriptor <<= 32;
-
-    descriptor |= base << 16;
-    descriptor |= limit & 0x0000FFFF;
-
-    descriptor
-}
