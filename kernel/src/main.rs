@@ -24,6 +24,7 @@ mod io;
 mod panic;
 
 use core::arch::asm;
+use core::u32;
 use descriptor::global_table as gdt;
 
 use limine::request::{FramebufferRequest, RequestsEndMarker, RequestsStartMarker};
@@ -56,12 +57,13 @@ unsafe extern "C" fn kmain() -> ! {
     assert!(BASE_REVISION.is_supported());
 
     let gdtr = arch::x86_64::Gdtr {
-        len: (gdt::GDT.len() * core::mem::size_of_val(&gdt::GDT) - 1) as u16,
+        len: (core::mem::size_of_val(&gdt::GDT) - 1) as u16,
         base: gdt::GDT.as_ptr() as *const u64,
     };
     arch::x86_64::_load_gdt(&gdtr);
     arch::x86_64::reload_segments();
-    io::cls(0x0000ff00).unwrap();
+    io::cls(0).unwrap();
+    io::kprint("Hello, World!", u32::MAX, 0).unwrap();
 
     hcf();
 }
