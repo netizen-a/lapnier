@@ -14,16 +14,22 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-use core::cell;
 use super::segment::SegmentDescriptor;
+use core::cell;
 
-pub static GDT: GlobalDescriptorTable<3> = GlobalDescriptorTable::new([
-    // Null segment
+pub static GDT: GlobalDescriptorTable<6> = GlobalDescriptorTable::new([
+    // Null Descriptor
     SegmentDescriptor::new(0, 0x00000, 0x00, 0x0).unwrap(),
-    // Kernel code segment
-    SegmentDescriptor::new(0, 0xFFFFF, 0x9B, 0xA).unwrap(),
-    // Kernel data segment
-    SegmentDescriptor::new(0, 0xFFFFF, 0x93, 0xA).unwrap(),
+    // Kernel Mode Code Segment
+    SegmentDescriptor::new(0, 0xFFFFF, 0x9A, 0xA).unwrap(),
+    // Kernel Mode Data Segment
+    SegmentDescriptor::new(0, 0xFFFFF, 0x92, 0xC).unwrap(),
+    // User Mode Code Segment
+    SegmentDescriptor::new(0, 0xFFFFF, 0xFA, 0xA).unwrap(),
+    // User Mode Data Segment
+    SegmentDescriptor::new(0, 0xFFFFF, 0xF2, 0xC).unwrap(),
+    // Task State Segment
+    SegmentDescriptor::new(0, 0x00000, 0x89, 0x0).unwrap(),
 ]);
 
 #[derive(Debug)]
@@ -41,7 +47,7 @@ impl<const N: usize> GlobalDescriptorTable<N> {
     }
     #[inline]
     pub const unsafe fn len(&self) -> usize {
-        (*self.inner.get()).len()
+        N
     }
     #[inline]
     pub const unsafe fn as_ptr(&self) -> *const SegmentDescriptor {

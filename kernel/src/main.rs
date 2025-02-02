@@ -18,13 +18,13 @@
 #![no_main]
 
 mod arch;
+mod descriptor;
 mod fonts;
 mod io;
 mod panic;
-mod descriptor;
 
-use descriptor::global_table as gdt;
 use core::arch::asm;
+use descriptor::global_table as gdt;
 
 use limine::request::{FramebufferRequest, RequestsEndMarker, RequestsStartMarker};
 use limine::BaseRevision;
