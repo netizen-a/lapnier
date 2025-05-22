@@ -16,6 +16,7 @@
  */
 #![no_std]
 #![no_main]
+#![feature(sync_unsafe_cell)]
 
 mod arch;
 mod descriptor;
@@ -23,12 +24,14 @@ mod fonts;
 mod io;
 mod panic;
 
-use core::arch::asm;
 use core::u32;
-use descriptor::global_table as gdt;
+use arrayvec::ArrayString;
+use descriptor::{gdt as gdt, tss};
 
+use descriptor::segment::SegmentDescriptor64;
 use limine::request::{FramebufferRequest, RequestsEndMarker, RequestsStartMarker};
 use limine::BaseRevision;
+use core::fmt::Write;
 
 /// Sets the base revision to the latest revision supported by the crate.
 /// See specification for further info.
@@ -56,27 +59,22 @@ unsafe extern "C" fn kmain() -> ! {
     // removed by the linker.
     assert!(BASE_REVISION.is_supported());
 
+    let tss_base = (&raw const tss::TSS) as usize;
+    let tss_limit = (core::mem::size_of_val(&tss::TSS) - 1) as u32;
+    (*gdt::GDT.get()).tss = SegmentDescriptor64::new(tss_base as u64, tss_limit, 0x89, 0x0).unwrap();
+
     let gdtr = arch::x86_64::Gdtr {
         len: (core::mem::size_of_val(&gdt::GDT) - 1) as u16,
-        base: gdt::GDT.as_ptr() as *const u64,
+        base: gdt::GDT.get() as *const u64,
     };
     arch::x86_64::_load_gdt(&gdtr);
+    arch::x86_64::flush_tss();
     arch::x86_64::reload_segments();
     io::cls(0).unwrap();
-    io::kprint("Hello, World!", u32::MAX, 0).unwrap();
+    // io::kprint("Hello, World!", u32::MAX, 0).unwrap();
+    let mut line_astr = ArrayString::<50>::new();
+    write!(&mut line_astr, "0x{:x}", tss_base).unwrap();
+    io::kprint(line_astr.as_bytes(), u32::MAX, 0).unwrap();
 
-    hcf();
-}
-
-pub fn hcf() -> ! {
-    loop {
-        unsafe {
-            #[cfg(target_arch = "x86_64")]
-            asm!("hlt");
-            #[cfg(any(target_arch = "aarch64", target_arch = "riscv64"))]
-            asm!("wfi");
-            #[cfg(target_arch = "loongarch64")]
-            asm!("idle 0");
-        }
-    }
+    arch::hcf();
 }

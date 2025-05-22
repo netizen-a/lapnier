@@ -36,10 +36,20 @@ pub unsafe fn reload_segments() {
         "mov   fs, ax",
         "mov   gs, ax",
         "mov   ss, ax",
+        lateout("rax") _,
     }
 }
 
 #[inline(always)]
 pub unsafe fn _load_gdt(gdtr: &Gdtr) {
     asm!("lgdt [{}]", in(reg) gdtr, options(nostack))
+}
+
+#[inline(always)]
+pub unsafe fn flush_tss() {
+    asm! {
+        "mov ax, (5 * 8)",
+        "ltr ax",
+        out("ax") _,
+    }
 }

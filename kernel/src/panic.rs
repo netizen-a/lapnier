@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-use crate::hcf;
+use crate::arch::hcf;
 use crate::io;
 use arrayvec::ArrayString;
 use core::fmt::Write;
